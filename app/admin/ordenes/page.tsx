@@ -184,12 +184,18 @@ export default function AdminOrdenesPage() {
       if (!okEstado) return false;
       if (!q) return true;
 
+      // ✅ ahora también busca por nombre de producto
+      const matchItem = (o.orden_items ?? []).some((it) =>
+        it.nombre_producto.toLowerCase().includes(q)
+      );
+
       return (
         o.id.toLowerCase().includes(q) ||
         o.nombre_cliente.toLowerCase().includes(q) ||
         o.telefono.toLowerCase().includes(q) ||
         o.direccion.toLowerCase().includes(q) ||
-        o.metodo_pago.toLowerCase().includes(q)
+        o.metodo_pago.toLowerCase().includes(q) ||
+        matchItem
       );
     });
   }, [ordenes, filtroEstado, busqueda]);
@@ -430,7 +436,7 @@ export default function AdminOrdenesPage() {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="mt-2 w-full rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-white outline-none focus:border-[#D4AF37]/50"
-              placeholder="Nombre, teléfono, dirección o ID..."
+              placeholder="Nombre, teléfono, dirección, ID o producto..."
             />
           </div>
 
@@ -465,11 +471,13 @@ export default function AdminOrdenesPage() {
 
         {/* Tabla */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-[#0c0c0c] overflow-hidden">
+          {/* ✅ REEMPLAZADO: header para incluir columna Productos */}
           <div className="grid grid-cols-12 px-5 py-3 text-xs text-white/55 border-b border-white/10">
-            <div className="col-span-4">Cliente</div>
-            <div className="col-span-3">Fecha</div>
+            <div className="col-span-3">Cliente</div>
+            <div className="col-span-3">Productos</div>
+            <div className="col-span-2">Fecha</div>
             <div className="col-span-2">Total</div>
-            <div className="col-span-2">Estado</div>
+            <div className="col-span-1">Estado</div>
             <div className="col-span-1 text-right">Ver</div>
           </div>
 
@@ -485,17 +493,31 @@ export default function AdminOrdenesPage() {
                 key={o.id}
                 className="grid grid-cols-12 px-5 py-4 border-b border-white/10 hover:bg-white/[0.03] transition items-center"
               >
-                <div className="col-span-4">
+                <div className="col-span-3">
                   <p className="text-white font-semibold">{o.nombre_cliente}</p>
                   <p className="text-xs text-white/50">{o.telefono}</p>
                   <p className="text-xs text-white/40 mt-1 line-clamp-1">{o.direccion}</p>
                 </div>
 
-                <div className="col-span-3 text-white/70 text-sm">{fechaBonita(o.creado_en)}</div>
+                {/* ✅ NUEVO: productos comprados */}
+                <div className="col-span-3">
+                  {(o.orden_items ?? []).length === 0 ? (
+                    <p className="text-xs text-white/50">—</p>
+                  ) : (
+                    <p className="text-xs text-white/70 line-clamp-2">
+                      {(o.orden_items ?? [])
+                        .map((it) => `${it.nombre_producto} ×${it.cantidad}`)
+                        .join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="col-span-2 text-white/70 text-sm">{fechaBonita(o.creado_en)}</div>
 
                 <div className="col-span-2 text-white/80 font-semibold">{formatoCOP(o.total)}</div>
 
-                <div className="col-span-2">
+                {/* ✅ ajustado: antes col-span-2, ahora col-span-1 */}
+                <div className="col-span-1">
                   <select
                     value={o.estado}
                     onChange={(e) => cambiarEstado(o.id, e.target.value as EstadoOrden)}
@@ -534,7 +556,7 @@ export default function AdminOrdenesPage() {
         </div>
       </div>
 
-      {/* MODAL DETALLE */}
+      {/* MODAL DETALLE (se mantiene igual, ya muestra productos) */}
       {abierta && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button onClick={() => setAbierta(null)} className="absolute inset-0 bg-black/70" aria-label="Cerrar" />
