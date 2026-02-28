@@ -38,8 +38,11 @@ export default function CatalogoPage() {
   const [abierto, setAbierto] = useState(false);
   const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
 
-  // índice por producto para el carrusel
+  // índice por producto para el carrusel (tarjetas)
   const [indexPorId, setIndexPorId] = useState<Record<string, number>>({});
+
+  // ✅ carrusel dentro del MODAL (solo si no hay video)
+  const [modalIndex, setModalIndex] = useState(0);
 
   async function cargar() {
     setLoading(true);
@@ -65,11 +68,13 @@ export default function CatalogoPage() {
   function abrirModal(p: Producto) {
     setSeleccionado(p);
     setAbierto(true);
+    setModalIndex(0); // ✅ reinicia el carrusel del modal
   }
 
   function cerrarModal() {
     setAbierto(false);
     setSeleccionado(null);
+    setModalIndex(0);
   }
 
   function comprarSeleccionado() {
@@ -86,7 +91,7 @@ export default function CatalogoPage() {
     router.push("/carrito");
   }
 
-  // Combina imagen principal + array de imágenes
+  // Combina imagen principal + array de imágenes (para tarjetas)
   const imagenesDe = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const p of productos) {
@@ -119,6 +124,27 @@ export default function CatalogoPage() {
       const next = (actual + 1) % imgs.length;
       return { ...prevState, [id]: next };
     });
+  }
+
+  // ✅ imágenes del MODAL (imagen_url + imagenes[])
+  const imagenesModal = useMemo(() => {
+    if (!seleccionado) return [];
+    const arr = Array.isArray(seleccionado.imagenes)
+      ? seleccionado.imagenes.filter(Boolean)
+      : [];
+    return seleccionado.imagen_url ? [seleccionado.imagen_url, ...arr] : arr;
+  }, [seleccionado]);
+
+  function prevModal(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (imagenesModal.length <= 1) return;
+    setModalIndex((i) => (i - 1 + imagenesModal.length) % imagenesModal.length);
+  }
+
+  function nextModal(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (imagenesModal.length <= 1) return;
+    setModalIndex((i) => (i + 1) % imagenesModal.length);
   }
 
   return (
@@ -256,7 +282,7 @@ export default function CatalogoPage() {
         </Link>
       </div>
 
-      {/* MODAL SOLO VIDEO (sin carrusel) */}
+      {/* MODAL: VIDEO si existe, si no -> carrusel de FOTOS */}
       {abierto && seleccionado && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -287,7 +313,8 @@ export default function CatalogoPage() {
             </div>
 
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-[260px]">
+              {/* ✅ BLOQUE REEMPLAZADO: antes era "solo video" */}
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-[260px]">
                 {seleccionado.video_url ? (
                   <video
                     src={seleccionado.video_url}
@@ -295,12 +322,53 @@ export default function CatalogoPage() {
                     playsInline
                     className="w-full h-full"
                   />
+                ) : imagenesModal.length > 0 ? (
+                  <>
+                    <img
+                      src={imagenesModal[Math.min(modalIndex, imagenesModal.length - 1)]}
+                      alt={seleccionado.nombre}
+                      className="w-full h-full object-cover"
+                    />
+
+                    {imagenesModal.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevModal}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/20 bg-black/50 text-white/90 hover:bg-black/70 transition flex items-center justify-center"
+                          aria-label="Anterior"
+                        >
+                          ‹
+                        </button>
+
+                        <button
+                          onClick={nextModal}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/20 bg-black/50 text-white/90 hover:bg-black/70 transition flex items-center justify-center"
+                          aria-label="Siguiente"
+                        >
+                          ›
+                        </button>
+
+                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1">
+                          {imagenesModal.slice(0, 10).map((_, i) => (
+                            <span
+                              key={i}
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                i === modalIndex ? "bg-[#D4AF37]" : "bg-white/30"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                  </>
                 ) : (
                   <div className="text-center px-6">
                     <p className="text-xs tracking-[0.35em] uppercase text-white/50">
-                      Video
+                      Multimedia
                     </p>
-                    <p className="mt-3 text-white/70">Video pendiente por cargar</p>
+                    <p className="mt-3 text-white/70">Sin video ni fotos por ahora</p>
                     <div className="mt-6 mx-auto h-px w-40 bg-gradient-to-r from-transparent via-[#D4AF37]/35 to-transparent" />
                   </div>
                 )}
