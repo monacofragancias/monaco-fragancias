@@ -14,6 +14,7 @@ type Producto = {
   imagenes: string[]; // ✅ NUEVO
   video_url: string | null;
   activo: boolean;
+  orden: number; // ✅ NUEVO
 };
 
 function formatoCOP(valor: number) {
@@ -193,7 +194,7 @@ export default function CatalogoPage() {
       </div>
 
       {!loading && !error && productos.length > 0 && (
-        <div className="max-w-6xl mx-auto mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="max-w-6xl mx-auto mt-14 grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {productos.map((p) => {
             const imgs = imagenesDe.get(p.id) ?? [];
             const idx = Math.min(indexPorId[p.id] ?? 0, Math.max(0, imgs.length - 1));
@@ -205,7 +206,8 @@ export default function CatalogoPage() {
                 onClick={() => abrirModal(p)}
                 className="text-left rounded-2xl bg-[#0c0c0c] border border-white/10 hover:border-[#D4AF37]/40 transition shadow-[0_0_30px_rgba(0,0,0,0.6)] overflow-hidden"
               >
-                <div className="relative w-full aspect-[4/5] bg-black">
+                {/* ✅ Más compacta en móvil */}
+                <div className="relative w-full aspect-[3/4] bg-black">
                   {actual ? (
                     <img
                       src={actual}
@@ -231,7 +233,7 @@ export default function CatalogoPage() {
                     <>
                       <button
                         onClick={(e) => prev(e, p.id)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/20 bg-black/50 text-white/90 hover:bg-black/70 transition flex items-center justify-center"
+                        className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/20 bg-black/50 text-white/90 hover:bg-black/70 transition flex items-center justify-center"
                         aria-label="Anterior"
                       >
                         ‹
@@ -239,7 +241,7 @@ export default function CatalogoPage() {
 
                       <button
                         onClick={(e) => next(e, p.id)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/20 bg-black/50 text-white/90 hover:bg-black/70 transition flex items-center justify-center"
+                        className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/20 bg-black/50 text-white/90 hover:bg-black/70 transition flex items-center justify-center"
                         aria-label="Siguiente"
                       >
                         ›
@@ -265,7 +267,8 @@ export default function CatalogoPage() {
                   </div>
                 </div>
 
-                <div className="p-5">
+                {/* ✅ Padding más pequeño en móvil */}
+                <div className="p-3 sm:p-5">
                   <div className="w-full py-3 rounded-xl font-semibold text-center bg-gradient-to-r from-[#b68a2a] via-[#D4AF37] to-[#f0d878] text-black hover:brightness-110 transition">
                     Ver detalles
                   </div>

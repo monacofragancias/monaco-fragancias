@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCarrito } from "../providers/CarritoProvider";
@@ -22,6 +22,12 @@ function abrirWhatsApp(mensaje: string) {
   window.location.href = url;
 }
 
+type PromoAplicada = {
+  codigo: string;
+  descuento: number;
+  total: number;
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, vaciar } = useCarrito();
@@ -40,6 +46,10 @@ export default function CheckoutPage() {
   const [mensajeOk, setMensajeOk] = useState<string | null>(null);
   const [ordenCreadaId, setOrdenCreadaId] = useState<string | null>(null);
 
+  // ✅ Promo (leída desde localStorage y revalidada)
+  const [promoAplicada, setPromoAplicada] = useState<PromoAplicada | null>(null);
+  const [promoInfo, setPromoInfo] = useState<string | null>(null);
+
   const itemsPayload = useMemo(() => {
     return items.map((it) => ({
       id: it.id,
@@ -48,6 +58,69 @@ export default function CheckoutPage() {
       cantidad: it.cantidad,
     }));
   }, [items]);
+
+  // ✅ Subtotal real (no dependemos del total del provider para aplicar promo)
+  const subtotal = useMemo(() => {
+    return items.reduce((acc: number, it: any) => acc + it.precio * (it.cantidad ?? 1), 0);
+  }, [items]);
+
+  // ✅ Cuando llegas al checkout, leemos promo del localStorage y la revalidamos contra el subtotal
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const raw = localStorage.getItem("promo_aplicada");
+    if (!raw) {
+      setPromoAplicada(null);
+      setPromoInfo(null);
+      return;
+    }
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      localStorage.removeItem("promo_aplicada");
+      setPromoAplicada(null);
+      setPromoInfo(null);
+      return;
+    }
+
+    const codigo = String(parsed?.codigo ?? "").trim();
+    if (!codigo || subtotal <= 0) {
+      setPromoAplicada(null);
+      setPromoInfo(null);
+      return;
+    }
+
+    (async () => {
+      // Revalidamos en backend
+      const res = await fetch("/api/cupones/aplicar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo, subtotal }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data?.ok) {
+        // Si ya no sirve, lo quitamos para evitar inconsistencias
+        localStorage.removeItem("promo_aplicada");
+        setPromoAplicada(null);
+        setPromoInfo(data?.error ?? "El cupón ya no es válido.");
+        return;
+      }
+
+      setPromoAplicada({
+        codigo: data.data.codigo,
+        descuento: data.data.descuento,
+        total: data.data.total,
+      });
+      setPromoInfo(null);
+    })();
+  }, [subtotal]);
+
+  const descuento = promoAplicada?.descuento ?? 0;
+  const totalFinal = promoAplicada?.total ?? subtotal;
 
   async function confirmar() {
     setError(null);
@@ -63,6 +136,37 @@ export default function CheckoutPage() {
       return;
     }
 
+    // ✅ Seguridad extra: si hay promo aplicada, revalidamos justo antes de crear la orden
+    let promoParaEnviar: { codigo: string; descuento: number; total: number } | null =
+      promoAplicada;
+
+    if (promoAplicada) {
+      const resPromo = await fetch("/api/cupones/aplicar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo: promoAplicada.codigo, subtotal }),
+      });
+
+      const dataPromo = await resPromo.json().catch(() => ({}));
+
+      if (!resPromo.ok || !dataPromo?.ok) {
+        // Si se volvió inválido, lo quitamos y seguimos SIN promo (no bloqueamos compra)
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("promo_aplicada");
+        }
+        promoParaEnviar = null;
+        setPromoAplicada(null);
+        setPromoInfo(dataPromo?.error ?? "Cupón inválido. Se quitó automáticamente.");
+      } else {
+        promoParaEnviar = {
+          codigo: dataPromo.data.codigo,
+          descuento: dataPromo.data.descuento,
+          total: dataPromo.data.total,
+        };
+        setPromoAplicada(promoParaEnviar);
+      }
+    }
+
     setLoading(true);
 
     const res = await fetch("/api/ordenes", {
@@ -74,6 +178,12 @@ export default function CheckoutPage() {
         direccion,
         metodo_pago: metodoPago,
         items: itemsPayload,
+
+        // ✅ CAMPOS EXTRA (no rompen nada si el backend aún no los usa)
+        subtotal,
+        codigo_cupon: promoParaEnviar?.codigo ?? null,
+        descuento: promoParaEnviar?.descuento ?? 0,
+        total_final: promoParaEnviar ? promoParaEnviar.total : subtotal,
       }),
     });
 
@@ -91,6 +201,11 @@ export default function CheckoutPage() {
     // vaciamos carrito (mantiene funcionalidad pasada)
     vaciar();
 
+    // ✅ limpiamos promo guardada para evitar que se quede pegada
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("promo_aplicada");
+    }
+
     if (metodoPago === "Transferencia") {
       // ✅ Redirección a WhatsApp
       abrirWhatsApp(construirMensajeTransferencia(ordenId));
@@ -102,9 +217,6 @@ export default function CheckoutPage() {
     setMensajeOk(
       "Pronto nuestro equipo se comunicará contigo para coordinar la fecha de entrega de tu producto."
     );
-
-    // (Opcional) si igual quieres mantener la confirmación disponible:
-    // router.push(`/confirmacion?orden=${encodeURIComponent(ordenId)}`);
   }
 
   return (
@@ -228,7 +340,7 @@ export default function CheckoutPage() {
               {items.length === 0 ? (
                 <p className="text-white/60 text-sm">Carrito vacío.</p>
               ) : (
-                items.map((it) => (
+                items.map((it: any) => (
                   <div key={it.id} className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-white/80 text-sm font-semibold">{it.nombre}</p>
@@ -244,9 +356,37 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            <div className="mt-6 flex justify-between text-white/70 text-sm">
-              <span>Total</span>
-              <span className="text-[#D4AF37] font-semibold">{formatoCOP(total)}</span>
+            {/* ✅ Info promo */}
+            {promoInfo && (
+              <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70">
+                {promoInfo}
+              </div>
+            )}
+
+            {/* ✅ Totales con promo */}
+            <div className="mt-6 space-y-2 text-white/70 text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span className="text-white/85 font-semibold">{formatoCOP(subtotal)}</span>
+              </div>
+
+              {promoAplicada && descuento > 0 && (
+                <div className="flex justify-between text-green-200">
+                  <span>
+                    Descuento{" "}
+                    <span className="text-white/50">({promoAplicada.codigo})</span>
+                  </span>
+                  <span className="font-semibold">-{formatoCOP(descuento)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between pt-2 border-t border-white/10 text-white font-semibold">
+                <span>Total</span>
+                <span className="text-[#D4AF37]">{formatoCOP(totalFinal)}</span>
+              </div>
+
+              {/* ✅ Mantengo tu total del provider intacto (por compatibilidad) */}
+              {/* (Solo referencia: total provider = {formatoCOP(total)}) */}
             </div>
           </div>
         </div>

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 
+function normalizarOrden(valor: any) {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return 0;
+  // Evita decimales raros
+  return Math.trunc(n);
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const soloActivos = url.searchParams.get("activo") === "true";
@@ -8,6 +15,9 @@ export async function GET(req: Request) {
   let query = supabaseAdmin
     .from("productos")
     .select("*")
+    // ✅ NUEVO: primero los de mayor orden
+    .order("orden", { ascending: false })
+    // ✅ respaldo (si varios tienen mismo orden)
     .order("creado_en", { ascending: false });
 
   if (soloActivos) query = query.eq("activo", true);
@@ -34,9 +44,12 @@ export async function POST(req: Request) {
     precio: Number(body.precio ?? 0),
     descripcion: String(body.descripcion ?? "").trim(),
     imagen_url: body.imagen_url ? String(body.imagen_url).trim() : null,
-    imagenes, // ✅ NUEVO
+    imagenes, // ✅ ya existente
     video_url: body.video_url ? String(body.video_url).trim() : null,
     activo: Boolean(body.activo ?? true),
+
+    // ✅ NUEVO: orden (prioridad)
+    orden: normalizarOrden(body.orden),
   };
 
   if (!nuevo.nombre) {

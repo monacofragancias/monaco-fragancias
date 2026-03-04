@@ -12,6 +12,10 @@ type Producto = {
   imagenes: string[]; // ✅
   video_url: string | null;
   activo: boolean;
+
+  // ✅ NUEVO
+  orden: number;
+
   creado_en: string;
   actualizado_en: string;
 };
@@ -25,6 +29,12 @@ function parseImagenes(texto: string): string[] {
     .split("\n")
     .map((x) => x.trim())
     .filter((x) => x.length > 0);
+}
+
+function normalizarOrden(valor: any) {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return 0;
+  return Math.trunc(n);
 }
 
 export default function AdminPage() {
@@ -41,6 +51,9 @@ export default function AdminPage() {
   const [imagenesTexto, setImagenesTexto] = useState(""); // ✅
   const [videoUrl, setVideoUrl] = useState("");
   const [activo, setActivo] = useState(true);
+
+  // ✅ NUEVO: orden/prioridad
+  const [orden, setOrden] = useState<number>(0);
 
   async function cargar() {
     setLoading(true);
@@ -64,6 +77,7 @@ export default function AdminPage() {
     setImagenesTexto("");
     setVideoUrl("");
     setActivo(true);
+    setOrden(0); // ✅
     setModalOpen(true);
   }
 
@@ -76,6 +90,7 @@ export default function AdminPage() {
     setImagenesTexto((p.imagenes ?? []).join("\n")); // ✅
     setVideoUrl(p.video_url ?? "");
     setActivo(p.activo);
+    setOrden(p.orden ?? 0); // ✅
     setModalOpen(true);
   }
 
@@ -90,6 +105,9 @@ export default function AdminPage() {
       imagenes, // ✅
       video_url: videoUrl || null,
       activo,
+
+      // ✅ NUEVO
+      orden: normalizarOrden(orden),
     };
 
     const url = editando ? `/api/productos/${editando.id}` : "/api/productos";
@@ -152,6 +170,13 @@ export default function AdminPage() {
               Órdenes
             </Link>
 
+            <Link
+              href="/admin/cupones"
+              className="px-5 py-3 rounded-xl border border-white/15 text-white/80 hover:text-white hover:border-white/30 hover:bg-white/5 transition"
+            >
+              Cupones
+            </Link>
+
             <button
               onClick={abrirNuevo}
               className="px-5 py-3 rounded-xl font-semibold bg-gradient-to-r from-[#b68a2a] via-[#D4AF37] to-[#f0d878] text-black hover:brightness-110 transition"
@@ -171,9 +196,10 @@ export default function AdminPage() {
         <div className="mt-10 rounded-2xl border border-white/10 bg-[#0c0c0c] overflow-hidden">
           <div className="grid grid-cols-12 px-5 py-3 text-xs text-white/55 border-b border-white/10">
             <div className="col-span-5">Producto</div>
+            <div className="col-span-2">Orden</div>
             <div className="col-span-3">Precio</div>
-            <div className="col-span-2">Estado</div>
-            <div className="col-span-2 text-right">Acciones</div>
+            <div className="col-span-1">Estado</div>
+            <div className="col-span-1 text-right">Acciones</div>
           </div>
 
           {loading ? (
@@ -198,11 +224,19 @@ export default function AdminPage() {
                   </p>
                 </div>
 
+                {/* ✅ NUEVO: orden visible */}
+                <div className="col-span-2 text-white/70 font-semibold">
+                  {Number.isFinite(p.orden) ? p.orden : 0}
+                  <p className="text-[11px] text-white/35 font-normal mt-1">
+                    Mayor = más arriba
+                  </p>
+                </div>
+
                 <div className="col-span-3 text-white/80 font-semibold">
                   {formatoCOP(p.precio)}
                 </div>
 
-                <div className="col-span-2">
+                <div className="col-span-1">
                   <span
                     className={`text-xs px-3 py-1 rounded-full border ${
                       p.activo
@@ -214,7 +248,7 @@ export default function AdminPage() {
                   </span>
                 </div>
 
-                <div className="col-span-2 flex justify-end gap-2">
+                <div className="col-span-1 flex justify-end gap-2">
                   <button
                     onClick={() => abrirEditar(p)}
                     className="px-3 py-2 rounded-xl border border-white/15 text-white/80 hover:text-white hover:border-white/30 hover:bg-white/5 transition text-sm"
@@ -274,6 +308,21 @@ export default function AdminPage() {
                 className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-white outline-none focus:border-[#D4AF37]/50"
               />
 
+              {/* ✅ NUEVO: ORDEN */}
+              <label className="text-xs text-white/60 mt-2">
+                Orden / Prioridad (mayor = más arriba)
+              </label>
+              <input
+                value={orden}
+                onChange={(e) => setOrden(Number(e.target.value))}
+                type="number"
+                className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-white outline-none focus:border-[#D4AF37]/50"
+                placeholder="0"
+              />
+              <p className="text-xs text-white/35 -mt-1">
+                Ejemplo: 100 para “encabezado”, 10 normal, 0 por defecto.
+              </p>
+
               <label className="text-xs text-white/60 mt-2">Descripción</label>
               <textarea
                 value={descripcion}
@@ -288,7 +337,6 @@ export default function AdminPage() {
                 value={imagenUrl}
                 onChange={(e) => setImagenUrl(e.target.value)}
                 className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-white outline-none focus:border-[#D4AF37]/50"
-                //placeholder="https://... o /..."
               />
 
               <label className="text-xs text-white/60 mt-2">
@@ -300,7 +348,6 @@ export default function AdminPage() {
                 className="w-full min-h-[120px] rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-white outline-none focus:border-[#D4AF37]/50"
                 placeholder={"https://...\nhttps://...\nhttps://..."}
               />
-            
 
               <label className="text-xs text-white/60 mt-2">
                 URL Video (opcional)

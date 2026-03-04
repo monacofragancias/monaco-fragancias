@@ -16,6 +16,12 @@ function limpiarUndefined<T extends Record<string, any>>(obj: T) {
   return out as Partial<T>;
 }
 
+function normalizarOrden(valor: any) {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return 0;
+  return Math.trunc(n);
+}
+
 export async function DELETE(_: Request, ctx: Ctx) {
   const id = await getId(ctx);
 
@@ -43,9 +49,7 @@ export async function PUT(req: Request, ctx: Ctx) {
 
   const cambios: Record<string, any> = {
     nombre: body.nombre !== undefined ? String(body.nombre ?? "").trim() : undefined,
-
     precio: body.precio !== undefined ? Number(body.precio) : undefined,
-
     descripcion:
       body.descripcion !== undefined ? String(body.descripcion ?? "").trim() : undefined,
 
@@ -62,6 +66,9 @@ export async function PUT(req: Request, ctx: Ctx) {
         : undefined,
 
     activo: body.activo !== undefined ? Boolean(body.activo) : undefined,
+
+    // ✅ NUEVO: orden opcional
+    orden: body.orden !== undefined ? normalizarOrden(body.orden) : undefined,
   };
 
   // ✅ imagenes opcional: si viene, se guarda (puede ser [])
@@ -85,7 +92,6 @@ export async function PUT(req: Request, ctx: Ctx) {
 
   const cambiosFinal = limpiarUndefined(cambios);
 
-  // Si no mandaron nada para actualizar
   if (Object.keys(cambiosFinal).length === 0) {
     return NextResponse.json(
       { ok: false, error: "No hay cambios para actualizar" },
