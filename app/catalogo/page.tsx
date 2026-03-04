@@ -206,7 +206,7 @@ export default function CatalogoPage() {
                 onClick={() => abrirModal(p)}
                 className="text-left rounded-2xl bg-[#0c0c0c] border border-white/10 hover:border-[#D4AF37]/40 transition shadow-[0_0_30px_rgba(0,0,0,0.6)] overflow-hidden"
               >
-                {/* ✅ Más compacta en móvil */}
+                {/* ✅ IMAGEN / CARRUSEL TARJETA */}
                 <div className="relative w-full aspect-[3/4] bg-black">
                   {actual ? (
                     <img
@@ -260,18 +260,18 @@ export default function CatalogoPage() {
                     </>
                   )}
 
-                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <p className="text-white font-semibold">{p.nombre}</p>
-                    <p className="text-[#D4AF37] font-semibold">{formatoCOP(p.precio)}</p>
-                  </div>
+                  {/* ✅ Se mantiene el gradient para estética, pero SIN texto encima */}
+                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
                 </div>
 
-                {/* ✅ Padding más pequeño en móvil */}
+                {/* ✅ AQUÍ VA EL NOMBRE + PRECIO (REEMPLAZA "Ver detalles") */}
                 <div className="p-3 sm:p-5">
-                  <div className="w-full py-3 rounded-xl font-semibold text-center bg-gradient-to-r from-[#b68a2a] via-[#D4AF37] to-[#f0d878] text-black hover:brightness-110 transition">
-                    Ver detalles
-                  </div>
+                  <p className="text-white font-semibold leading-tight line-clamp-2">
+                    {p.nombre}
+                  </p>
+                  <p className="mt-1 text-[#D4AF37] font-semibold">
+                    {formatoCOP(p.precio)}
+                  </p>
                 </div>
               </button>
             );
@@ -316,7 +316,6 @@ export default function CatalogoPage() {
             </div>
 
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* ✅ BLOQUE REEMPLAZADO: antes era "solo video" */}
               <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-[260px]">
                 {seleccionado.video_url ? (
                   <video
