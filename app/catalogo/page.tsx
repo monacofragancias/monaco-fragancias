@@ -168,7 +168,6 @@ export default function CatalogoPage() {
         </button>
       </div>
 
-      {/* ✅ Banner local */}
       {bannerUrl && (
         <div className="max-w-6xl mx-auto mb-10 overflow-hidden rounded-3xl border border-white/10 bg-[#0c0c0c] shadow-[0_0_30px_rgba(0,0,0,0.35)]">
           <img
@@ -322,20 +321,20 @@ export default function CatalogoPage() {
             </div>
 
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-[260px]">
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-[220px] md:min-h-[320px] p-3">
                 {seleccionado.video_url ? (
                   <video
                     src={seleccionado.video_url}
                     controls
                     playsInline
-                    className="w-full h-full"
+                    className="w-full max-h-[320px] md:max-h-[420px] rounded-xl object-contain"
                   />
                 ) : imagenesModal.length > 0 ? (
                   <>
                     <img
                       src={imagenesModal[Math.min(modalIndex, imagenesModal.length - 1)]}
                       alt={seleccionado.nombre}
-                      className="w-full h-full object-cover"
+                      className="max-h-[320px] md:max-h-[420px] w-auto max-w-full object-contain rounded-xl"
                     />
 
                     {imagenesModal.length > 1 && (
@@ -395,7 +394,7 @@ export default function CatalogoPage() {
                     Comprar
                   </button>
 
-                  <p className="mt-3 text-xs text-white/45">¡ORDENA HOY!, PEDIDO GRATIS</p>
+                  <p className="mt-3 text-xs text-white/45">¡Ordena hoy, pedido gratis!</p>
                 </div>
               </div>
             </div>
