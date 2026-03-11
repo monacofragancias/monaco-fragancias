@@ -11,23 +11,25 @@ type Producto = {
   precio: number;
   descripcion: string;
   imagen_url: string | null;
-  imagenes: string[]; // ✅ NUEVO
+  imagenes: string[];
   video_url: string | null;
   activo: boolean;
-  orden: number; // ✅ NUEVO
+  orden: number;
 };
 
 function formatoCOP(valor: number) {
   return valor.toLocaleString("es-CO", { style: "currency", currency: "COP" });
 }
 
+// ✅ Banner administrado desde VS Code / carpeta public
+const BANNER_CATALOGO_URL = "/banner-catalogo.jpg";
+// Si algún día quieres ocultarlo temporalmente, déjalo en null:
+// const BANNER_CATALOGO_URL: string | null = null;
+
 export default function CatalogoPage() {
   const router = useRouter();
-
-  // ✅ antes: const { agregar } = useCarrito();
   const { agregar, items } = useCarrito();
 
-  // ✅ cantidad total para el badge del botón del carrito
   const cantidadTotal = useMemo(() => {
     return items.reduce((acc: number, it: any) => acc + (it.cantidad ?? 1), 0);
   }, [items]);
@@ -39,26 +41,27 @@ export default function CatalogoPage() {
   const [abierto, setAbierto] = useState(false);
   const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
 
-  // índice por producto para el carrusel (tarjetas)
   const [indexPorId, setIndexPorId] = useState<Record<string, number>>({});
-
-  // ✅ carrusel dentro del MODAL (solo si no hay video)
   const [modalIndex, setModalIndex] = useState(0);
+
+  // ✅ Banner local
+  const [bannerUrl, setBannerUrl] = useState<string | null>(BANNER_CATALOGO_URL);
 
   async function cargar() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/productos?activo=true", { cache: "no-store" });
-    const data = await res.json().catch(() => ({}));
+    const resProductos = await fetch("/api/productos?activo=true", { cache: "no-store" });
+    const dataProductos = await resProductos.json().catch(() => ({}));
 
-    if (!res.ok || !data?.ok) {
+    if (!resProductos.ok || !dataProductos?.ok) {
       setLoading(false);
-      setError(data?.error ?? "No se pudo cargar el catálogo");
+      setError(dataProductos?.error ?? "No se pudo cargar el catálogo");
       return;
     }
 
-    setProductos(data.data ?? []);
+    setProductos(dataProductos.data ?? []);
+    setBannerUrl(BANNER_CATALOGO_URL);
     setLoading(false);
   }
 
@@ -69,7 +72,7 @@ export default function CatalogoPage() {
   function abrirModal(p: Producto) {
     setSeleccionado(p);
     setAbierto(true);
-    setModalIndex(0); // ✅ reinicia el carrusel del modal
+    setModalIndex(0);
   }
 
   function cerrarModal() {
@@ -92,7 +95,6 @@ export default function CatalogoPage() {
     router.push("/carrito");
   }
 
-  // Combina imagen principal + array de imágenes (para tarjetas)
   const imagenesDe = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const p of productos) {
@@ -127,7 +129,6 @@ export default function CatalogoPage() {
     });
   }
 
-  // ✅ imágenes del MODAL (imagen_url + imagenes[])
   const imagenesModal = useMemo(() => {
     if (!seleccionado) return [];
     const arr = Array.isArray(seleccionado.imagenes)
@@ -150,7 +151,6 @@ export default function CatalogoPage() {
 
   return (
     <main className="min-h-screen bg-black px-6 py-16">
-      {/* ✅ BOTÓN CARRITO (FLOTANTE) */}
       <div className="fixed top-5 right-5 z-40">
         <button
           onClick={() => router.push("/carrito")}
@@ -167,6 +167,17 @@ export default function CatalogoPage() {
           )}
         </button>
       </div>
+
+      {/* ✅ Banner local */}
+      {bannerUrl && (
+        <div className="max-w-6xl mx-auto mb-10 overflow-hidden rounded-3xl border border-white/10 bg-[#0c0c0c] shadow-[0_0_30px_rgba(0,0,0,0.35)]">
+          <img
+            src={bannerUrl}
+            alt="Banner catálogo"
+            className="w-full h-auto max-h-[420px] object-cover"
+          />
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto text-center">
         <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#8c6a1c] via-[#D4AF37] to-[#f5e6a3] bg-clip-text text-transparent">
@@ -206,7 +217,6 @@ export default function CatalogoPage() {
                 onClick={() => abrirModal(p)}
                 className="text-left rounded-2xl bg-[#0c0c0c] border border-white/10 hover:border-[#D4AF37]/40 transition shadow-[0_0_30px_rgba(0,0,0,0.6)] overflow-hidden"
               >
-                {/* ✅ IMAGEN / CARRUSEL TARJETA */}
                 <div className="relative w-full aspect-[3/4] bg-black">
                   {actual ? (
                     <img
@@ -228,7 +238,6 @@ export default function CatalogoPage() {
                     </div>
                   )}
 
-                  {/* Flechas solo en tarjeta */}
                   {imgs.length > 1 && (
                     <>
                       <button
@@ -260,11 +269,9 @@ export default function CatalogoPage() {
                     </>
                   )}
 
-                  {/* ✅ Se mantiene el gradient para estética, pero SIN texto encima */}
                   <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
                 </div>
 
-                {/* ✅ AQUÍ VA EL NOMBRE + PRECIO (REEMPLAZA "Ver detalles") */}
                 <div className="p-3 sm:p-5">
                   <p className="text-white font-semibold leading-tight line-clamp-2">
                     {p.nombre}
@@ -285,7 +292,6 @@ export default function CatalogoPage() {
         </Link>
       </div>
 
-      {/* MODAL: VIDEO si existe, si no -> carrusel de FOTOS */}
       {abierto && seleccionado && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
