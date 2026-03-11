@@ -394,7 +394,7 @@ export default function CatalogoPage() {
                     Comprar
                   </button>
 
-                  <p className="mt-3 text-xs text-white/45">¡Ordena hoy, pedido gratis!</p>
+                  <p className="mt-3 text-xs text-white/45">¡ENVIO GRATIS!</p>
                 </div>
               </div>
             </div>
