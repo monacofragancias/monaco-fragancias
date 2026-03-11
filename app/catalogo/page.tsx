@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useCarrito } from "../providers/CarritoProvider";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ const BANNER_CATALOGO_URL = "/banner-catalogo.jpg";
 export default function CatalogoPage() {
   const router = useRouter();
   const { agregar, items } = useCarrito();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const cantidadTotal = useMemo(() => {
     return items.reduce((acc: number, it: any) => acc + (it.cantidad ?? 1), 0);
@@ -69,6 +70,26 @@ export default function CatalogoPage() {
     cargar();
   }, []);
 
+  useEffect(() => {
+    if (!abierto || !seleccionado?.video_url || !videoRef.current) return;
+
+    const video = videoRef.current;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
+    const intentarReproducir = async () => {
+      try {
+        await video.play();
+      } catch (error) {
+        console.warn("No se pudo reproducir automáticamente el video:", error);
+      }
+    };
+
+    intentarReproducir();
+  }, [abierto, seleccionado]);
+
   function abrirModal(p: Producto) {
     setSeleccionado(p);
     setAbierto(true);
@@ -76,6 +97,11 @@ export default function CatalogoPage() {
   }
 
   function cerrarModal() {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+
     setAbierto(false);
     setSeleccionado(null);
     setModalIndex(0);
@@ -183,7 +209,7 @@ export default function CatalogoPage() {
           CATALOGO
         </h1>
         <p className="mt-4 text-white/60">
-          Usa las flechas para ver más fotos. Toca para ver el video.
+          Usa las flechas para ver más fotos. El video intenta reproducirse automáticamente.
         </p>
       </div>
 
@@ -324,9 +350,15 @@ export default function CatalogoPage() {
               <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-[220px] md:min-h-[320px] p-3">
                 {seleccionado.video_url ? (
                   <video
+                    ref={videoRef}
+                    key={seleccionado.video_url}
                     src={seleccionado.video_url}
                     controls
+                    autoPlay
+                    muted
+                    loop
                     playsInline
+                    preload="auto"
                     className="w-full max-h-[320px] md:max-h-[420px] rounded-xl object-contain"
                   />
                 ) : imagenesModal.length > 0 ? (
